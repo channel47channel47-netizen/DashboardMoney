@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimatum Finance Mobile & Desktop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000;
+            --card: rgba(25, 25, 25, 0.8);
+            --green: #00ffa3;
+            --red: #ff3355;
+            --accent: #00a2ff;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        /* --- Адаптивный Dashboard --- */
+        .glass-panel {
+            background: var(--card);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card p {
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono';
+            margin: 5px 0;
+        }
+
+        /* --- Контролы (Выбор даты) --- */
+        .nav-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        select, button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            flex-grow: 1;
+        }
+
+        /* --- Сетка календаря (Магия адаптивности) --- */
+        .days-grid {
+            display: grid;
+            gap: 8px;
+            /* По умолчанию для ПК: 7 колонок */
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        /* Планшеты */
+        @media (max-width: 992px) {
+            .days-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* Мобильные телефоны */
+        @media (max-width: 480px) {
+            .days-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-card p { font-size: 1rem; }
+            .glass-panel { padding: 10px; }
+            h1 { font-size: 1.5rem; }
+        }
+
+        .day-box {
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .day-info { font-size: 0.7rem; color: #777; margin-bottom: 5px; }
+        .day-profit { font-weight: 800; font-family: 'JetBrains Mono'; font-size: 0.9rem; }
+
+        .profit-plus { color: var(--green); text-shadow: 0 0 8px rgba(0,255,163,0.4); }
+        .profit-minus { color: var(--red); text-shadow: 0 0 8px rgba(255,51,85,0.4); }
+
+        /* Ghost Mode */
+        body.ghost-mode .day-profit { filter: blur(6px); position: relative; }
+        body.ghost-mode .day-profit::after { content: "****"; filter: blur(0); position: absolute; left:0; width:100%; color: var(--accent); }
+
+        /* Плавающая кнопка ТГК */
+        .tg-float {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: black;
+            padding: 10px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 100;
+            white-space: nowrap;
+        }
+
+        /* Модальные окна для мобилок */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: #111;
+            width: 100%;
+            max-width: 400px;
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid var(--accent);
+        }
+
+        input, textarea {
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            font-size: 16px; /* Предотвращает зум на iPhone */
+        }
+    </style>
+</head>
+<body class="theme-oled">
+
+    <div id="particles-js"></div>
+
+    <div class="container">
+        <!-- Статистика -->
+        <div class="glass-panel">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4 style="font-size: 10px; color: #888;">TOTAL</h4>
+                    <p id="stat-total">0.00 $</p>
+                </div>
+                <div class="stat-card">
+                    <h4 style="font-size: 10px; color: #888;">GOAL</h4>
+                    <div style="background:rgba(255,255,255,0.1); height:6px; border-radius:3px; margin-top:10px;">
+                        <div id="goal-bar" style="background:var(--accent); width:0%; height:100%; border-radius:3px; box-shadow:0 0 10px var(--accent);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-controls">
+                <select id="select-month" onchange="renderCalendar()">
+                    <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                    <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                    <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                    <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                </select>
+                <select id="select-year" onchange="renderCalendar()">
+                    <option value="2026">2026</option><option value="2027">2027</option>
+                    <option value="2028">2028</option><option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                </select>
+                <button onclick="openSettings()">⚙️</button>
+                <button onclick="toggleGhost()">👻</button>
+            </div>
+        </div>
+
+        <h1 id="month-display" style="text-align:center; font-weight:800; margin:20px 0;"></h1>
+
+        <div class="days-grid" id="days-container"></div>
+    </div>
+
+    <a href="https://t.me/ThethoughtofDeath" class="tg-float">@ThethoughtofDeath</a>
+
+    <!-- Ввод данных -->
+    <div class="modal" id="modal-entry">
+        <div class="modal-content">
+            <h2 id="modal-date" style="margin-top:0;">01 Jan</h2>
+            <input type="number" id="input-val" placeholder="Sum" inputmode="decimal">
+            <textarea id="input-note" placeholder="Note..."></textarea>
+            <button onclick="saveEntry()" style="background:var(--accent); color:black; width:100%; margin-top:10px;">SAVE</button>
+            <button onclick="closeModals()" style="background:transparent; width:100%; margin-top:10px;">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div class="modal" id="modal-settings">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            <p>Currency:</p>
+            <select id="set-cur" onchange="updateCfg()"><option value="USD">USD</option><option value="RUB">RUB</option></select>
+            <p>Monthly Goal:</p>
+            <input type="number" id="set-goal" onchange="updateCfg()">
+            <button onclick="closeModals()" style="width:100%; margin-top:20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        let db = JSON.parse(localStorage.getItem('fin_v2_db')) || {};
+        let cfg = JSON.parse(localStorage.getItem('fin_v2_cfg')) || { cur: 'USD', goal: 1000, ghost: false };
+        let activeId = null;
+
+        function openSettings() { 
+            document.getElementById('set-goal').value = cfg.goal;
+            document.getElementById('set-cur').value = cfg.cur;
+            document.getElementById('modal-settings').style.display = 'flex'; 
+        }
+        function toggleGhost() { cfg.ghost = !cfg.ghost; save(); renderCalendar(); }
+        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        
+        function save() { 
+            localStorage.setItem('fin_v2_db', JSON.stringify(db));
+            localStorage.setItem('fin_v2_cfg', JSON.stringify(cfg));
+        }
+
+        function updateCfg() {
+            cfg.cur = document.getElementById('set-cur').value;
+            cfg.goal = document.getElementById('set-goal').value;
+            save();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const m = parseInt(document.getElementById('select-month').value);
+            const y = document.getElementById('select-year').value;
+            const container = document.getElementById('days-container');
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            document.getElementById('month-display').innerText = `${monthNames[m]} ${y}`;
+            document.body.className = cfg.ghost ? 'ghost-mode' : '';
+            container.innerHTML = '';
+
+            const days = new Date(y, m + 1, 0).getDate();
+            let mTotal = 0;
+
+            for (let d = 1; d <= days; d++) {
+                const id = `${y}-${m}-${d}`;
+                const entry = db[id] || { val: 0 };
+                mTotal += entry.val;
+
+                const box = document.createElement('div');
+                box.className = 'day-box';
+                box.onclick = () => {
+                    activeId = id;
+                    document.getElementById('modal-date').innerText = `${d} ${monthNames[m]}`;
+                    document.getElementById('input-val').value = entry.val || '';
+                    document.getElementById('input-note').value = entry.note || '';
+                    document.getElementById('modal-entry').style.display = 'flex';
+                };
+
+                const curS = cfg.cur === 'USD' ? '$' : '₽';
+                box.innerHTML = `
+                    <div class="day-info">${d}</div>
+                    <div class="day-profit ${entry.val > 0 ? 'profit-plus' : (entry.val < 0 ? 'profit-minus' : '')}">
+                        ${entry.val !== 0 ? entry.val + curS : ''}
+                    </div>
+                `;
+                container.appendChild(box);
+            }
+
+            document.getElementById('stat-total').innerText = mTotal.toFixed(2) + (cfg.cur === 'USD' ? ' $' : ' ₽');
+            document.getElementById('goal-bar').style.width = Math.min(100, (mTotal / cfg.goal) * 100) + '%';
+        }
+
+        function saveEntry() {
+            const v = parseFloat(document.getElementById('input-val').value) || 0;
+            const n = document.getElementById('input-note').value;
+            db[activeId] = { val: v, note: n };
+            save();
+            renderCalendar();
+            closeModals();
+        }
+
+        particlesJS("particles-js", {
+            "particles": { "number": { "value": 40 }, "opacity": { "value": 0.2 }, "size": { "value": 1 }, "line_linked": { "enable": true, "opacity": 0.1 }, "move": { "speed": 0.5 } }
+        });
+
+        renderCalendar();
+    </script>
+</body>
+</html>
