@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Ultimatum Finance GHOST PRO</title>
+    <title>Ultimatum Finance NEON RED</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -40,17 +40,19 @@
         .day-box { 
             background: var(--card); border: 1px solid rgba(255,255,255,0.05); 
             aspect-ratio: 1/1; border-radius: 18px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;
+            transition: border 0.3s, background 0.3s;
         }
-        .day-box.has-plus { border-color: var(--green); background: rgba(0, 255, 163, 0.02); }
+        
+        /* Цвета ячеек */
+        .day-box.has-plus { border-color: var(--green); background: rgba(0, 255, 163, 0.05); }
+        .day-box.has-minus { border-color: var(--red); background: rgba(255, 51, 85, 0.05); }
+        
         .day-profit { font-weight: 800; font-size: 0.75rem; font-family: 'JetBrains Mono'; transition: 0.3s; }
         
-        /* GHOST MODE CSS */
         body.ghost-mode .blur-target, 
         body.ghost-mode .day-profit, 
         body.ghost-mode #stat-goal-perc { 
-            filter: blur(15px); 
-            pointer-events: none; 
-            user-select: none;
+            filter: blur(15px); pointer-events: none; user-select: none;
         }
 
         .progress-bar { background: rgba(255,255,255,0.05); height: 6px; border-radius: 10px; margin-top: 8px; overflow: hidden; }
@@ -101,7 +103,6 @@
         <a href="http://t.me/DashBoardMoney_bot" class="bot-btn">БОТ ДЛЯ ЗАРАБОТКА 💸</a>
     </div>
 
-    <!-- Модалка ввода -->
     <div class="modal" id="modal-entry">
         <div class="modal-content">
             <h3 id="modal-date-title" style="margin:0">Дата</h3>
@@ -111,7 +112,6 @@
         </div>
     </div>
 
-    <!-- Модалка настроек -->
     <div class="modal" id="modal-settings">
         <div class="modal-content">
             <h3 style="margin-top:0">Параметры</h3>
@@ -142,7 +142,7 @@
 
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script>
-        const STORAGE_ID = 'ult_finance_v8_ghost_fix';
+        const STORAGE_ID = 'ult_finance_v9_neon_red';
         let liveRates = { RUB: 95.0, EUR: 0.92, USD: 1.0 };
         
         let db = JSON.parse(localStorage.getItem(STORAGE_ID + '_db')) || {};
@@ -159,9 +159,7 @@
                     liveRates.EUR = data.rates.EUR;
                     document.getElementById('api-status').innerText = 'Курсы обновлены ✅';
                 }
-            } catch (e) {
-                document.getElementById('api-status').innerText = 'Ошибка API. Использую кэш ⚠️';
-            }
+            } catch (e) { document.getElementById('api-status').innerText = 'Ошибка API ⚠️'; }
         }
 
         function openSettings() {
@@ -173,13 +171,7 @@
         }
 
         function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-        
-        function toggleGhost() { 
-            cfg.ghost = !cfg.ghost; 
-            save(); 
-            render(); 
-        }
-        
+        function toggleGhost() { cfg.ghost = !cfg.ghost; save(); render(); }
         function save() { 
             localStorage.setItem(STORAGE_ID + '_db', JSON.stringify(db)); 
             localStorage.setItem(STORAGE_ID + '_cfg', JSON.stringify(cfg)); 
@@ -187,8 +179,7 @@
 
         function convert(val, from, to) {
             if (from === to) return val;
-            const inUSD = val / liveRates[from];
-            return inUSD * liveRates[to];
+            return (val / liveRates[from]) * liveRates[to];
         }
 
         function updateCfg() {
@@ -214,6 +205,7 @@
                 if (!startTimestamp) startTimestamp = timestamp;
                 const progress = Math.min((timestamp - startTimestamp) / duration, 1);
                 const current = (progress * (end - start) + start).toFixed(1);
+                obj.style.color = end < 0 ? 'var(--red)' : 'white';
                 obj.innerHTML = current + symbols[cfg.cur];
                 if (progress < 1) window.requestAnimationFrame(step);
             };
@@ -226,9 +218,7 @@
             const container = document.getElementById('days-container');
             const symbols = { USD: '$', RUB: '₽', EUR: '€' };
             
-            // Применяем Ghost Mode и Тему
             document.body.className = `theme-${cfg.theme} ${cfg.ghost ? 'ghost-mode' : ''}`;
-            
             document.getElementById('month-display').innerText = `${monthsRU[m]} ${y}`;
             container.innerHTML = '';
 
@@ -248,21 +238,32 @@
                 const id = `${y}-${m}-${d}`;
                 const val = db[id]?.val || 0;
                 const box = document.createElement('div');
-                box.className = `day-box ${val > 0 ? 'has-plus' : ''}`;
+                
+                // Логика неонового цвета
+                let stateClass = '';
+                if (val > 0) stateClass = 'has-plus';
+                else if (val < 0) stateClass = 'has-minus';
+                
+                box.className = `day-box ${stateClass}`;
                 box.onclick = () => {
                     activeId = id;
                     document.getElementById('modal-date-title').innerText = `${d} ${monthsRU[m]}`;
                     document.getElementById('in-val').value = val || '';
                     document.getElementById('modal-entry').style.display = 'flex';
                 };
+
+                let color = 'white';
+                if (val > 0) color = 'var(--green)';
+                else if (val < 0) color = 'var(--red)';
+
                 box.innerHTML = `<span style="opacity:0.3; font-size:9px;">${d}</span>
-                                <span class="day-profit" style="color:${val > 0 ? 'var(--green)' : 'white'}">
+                                <span class="day-profit" style="color:${color}">
                                 ${val !== 0 ? val.toFixed(1) + symbols[cfg.cur] : ''}</span>`;
                 container.appendChild(box);
             }
 
             const goalP = Math.min(100, (mSum / cfg.goal) * 100);
-            document.getElementById('goal-bar').style.width = goalP + '%';
+            document.getElementById('goal-bar').style.width = Math.max(0, goalP) + '%';
             document.getElementById('stat-goal-perc').innerText = Math.floor(goalP) + '%';
         }
 
@@ -276,11 +277,10 @@
         function takeScreenshot() {
             html2canvas(document.getElementById('report-area'), { backgroundColor: null, scale: 2 }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `Report_${Date.now()}.png`; link.href = canvas.toDataURL(); link.click();
+                link.download = `Finance_Report.png`; link.href = canvas.toDataURL(); link.click();
             });
         }
 
-        // Инициализация селекторов
         const ySel = document.getElementById('sel-year');
         for(let y = 2026; y <= 2030; y++) {
             const opt = document.createElement('option'); opt.value = y; opt.innerText = y;
@@ -296,7 +296,6 @@
         });
 
         particlesJS("particles-js", { "particles": { "number": { "value": 25 }, "opacity": { "value": 0.2 }, "move": { "speed": 0.3 } } });
-        
         fetchRates().then(() => render());
     </script>
 </body>
